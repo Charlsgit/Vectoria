@@ -1,0 +1,126 @@
+STATISTICS
+
+## Mean
+
+The mean is the average of a set of numerical values.
+
+Formula:
+Mean = Sum of all values / Number of values
+
+Example:
+For the values 10, 20, 30, 40, 50:
+
+Mean = (10 + 20 + 30 + 40 + 50) / 5
+Mean = 150 / 5
+Mean = 30
+
+## Median
+
+The median is the middle value in a dataset after the values are arranged in ascending or descending order.
+
+For an odd number of observations, the median is the middle value.
+
+Example:
+Data: 10, 20, 30, 40, 50
+
+Median = 30
+
+For an even number of observations, the median is the average of the two middle values.
+
+Example:
+Data: 10, 20, 30, 40
+
+Median = (20 + 30) / 2
+Median = 25
+
+## Mode
+
+The mode is the value that occurs most frequently in a dataset.
+
+Example:
+Data: 10, 20, 20, 30, 40
+
+Mode = 20
+
+## Range
+
+The range measures the difference between the largest and smallest values.
+
+Formula:
+Range = Maximum value - Minimum value
+
+Example:
+Data: 10, 20, 30, 40, 50
+
+Range = 50 - 10
+Range = 40
+
+## Variance
+
+Variance measures how far the values in a dataset spread from the mean.
+
+A smaller variance indicates that the observations are closer to the mean.
+
+A larger variance indicates greater spread.
+
+## Standard Deviation
+
+Standard deviation measures the amount of variation or dispersion in a dataset.
+
+It is the square root of variance.
+
+Formula:
+
+Standard Deviation = √Variance
+
+## Probability
+
+Probability measures the likelihood that an event will occur.
+
+Its value ranges from 0 to 1.
+
+Probability = 0 means the event is impossible.
+
+Probability = 1 means the event is certain.
+
+Example:
+
+If a fair coin is tossed, the probability of getting heads is:
+
+P(Heads) = 1/2 = 0.5
+
+## Central Tendency
+
+The three major measures of central tendency are:
+
+1. Mean
+2. Median
+3. Mode
+
+Mean uses every observation in the dataset.
+
+Median is less affected by extreme values or outliers.
+
+Mode represents the most frequently occurring value.
+
+## Outliers
+
+An outlier is an observation that is unusually different from the other observations in a dataset.
+
+Example:
+
+Data: 10, 11, 12, 13, 100
+
+Here, 100 may be considered an outlier because it is much larger than the other values.
+
+## Correlation
+
+Correlation measures the strength and direction of the relationship between two variables.
+
+The correlation coefficient generally ranges from -1 to +1.
+
+A value close to +1 indicates a strong positive relationship.
+
+A value close to -1 indicates a strong negative relationship.
+
+A value close to 0 indicates little or no linear relationship.

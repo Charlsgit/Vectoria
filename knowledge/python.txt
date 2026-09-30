@@ -1,0 +1,15 @@
+Python is a high-level, interpreted programming language known for its simple and readable syntax.
+
+Python is widely used in data science, machine learning, artificial intelligence, web development, automation, scientific computing, and software development.
+
+Python uses indentation to define blocks of code instead of curly braces.
+
+Common Python data types include integers, floating-point numbers, strings, booleans, lists, tuples, dictionaries, and sets.
+
+A Python function is a reusable block of code defined using the def keyword.
+
+Python supports object-oriented programming, functional programming, and procedural programming.
+
+Popular Python libraries include NumPy, Pandas, Matplotlib, Scikit-learn, TensorFlow, PyTorch, and Requests.
+
+Python is particularly popular in artificial intelligence and data science because of its large ecosystem of libraries and its relatively simple syntax.

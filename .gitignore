@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# Personal / runtime data
+memory.json
+identity.json
+
+# Audio recordings / test files
+*.wav
+*.mp3
+*.m4a
+
+# Wake-word datasets and training artifacts
+wakeword/data/
+wakeword/training/
+*.onnx
+*.npy
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
