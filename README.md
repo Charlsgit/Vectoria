@@ -211,7 +211,7 @@ The project currently uses technologies and components including:
 - **NumPy**
 - **PyAudio / microphone input**
 - **Streamlit**
-  
+
 # Local-First Design
 
 Vectoria is designed around a local-first approach.
