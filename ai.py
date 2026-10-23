@@ -162,25 +162,52 @@ def check_memory(question, memory):
     user_notes = memory.get("user_notes", [])
 
     # --------------------------------
+    # Best Friends Lookup
+    # --------------------------------
+
+    friend_questions = [
+        "who are my best friends",
+        "who are my best friend",
+        "who is my best friend",
+        "who are my friends",
+        "who are my close friends",
+        "do you remember my best friends",
+        "do you know my best friends",
+        "tell me my best friends",
+        "name my best friends"
+    ]
+
+    if any(
+        phrase in question_lower
+        for phrase in friend_questions
+    ):
+        best_friends = memory.get("best_friends", [])
+
+        if isinstance(best_friends, str):
+            best_friends = [best_friends]
+
+        if best_friends:
+            friends = " and ".join(best_friends)
+
+            return f"Your best friends are {friends}."
+
+        return "I don't have your best friends saved in my memory yet."
+
+    # --------------------------------
     # Favourite / Favorite questions
     # --------------------------------
 
     if (
-            "favourite " in question_lower
-            or "favorite " in question_lower
+        "favourite " in question_lower
+        or "favorite " in question_lower
     ):
-
         marker = (
             "favourite "
             if "favourite " in question_lower
             else "favorite "
         )
 
-        category = question_lower.split(
-            marker,
-            1
-        )[1]
-
+        category = question_lower.split(marker, 1)[1]
         category = category.rstrip("?").strip()
 
         category = category.replace("who is ", "")
@@ -188,10 +215,7 @@ def check_memory(question, memory):
         category = category.replace("what are ", "")
         category = category.strip()
 
-        # --------------------------------
         # Direct lookup
-        # --------------------------------
-
         value = preferences.get(category)
 
         if value:
@@ -200,53 +224,27 @@ def check_memory(question, memory):
                 f"{str(value).title()}."
             )
 
-        # --------------------------------
         # Alias matching
-        # --------------------------------
-
         aliases = {
             "artist": [
-                "artist",
-                "singer",
-                "entertainer",
-                "artist_who"
+                "artist", "singer", "entertainer", "artist_who"
             ],
             "singer": [
-                "singer",
-                "artist",
-                "entertainer",
-                "artist_who"
+                "singer", "artist", "entertainer", "artist_who"
             ],
-            "movie": [
-                "movie",
-                "film"
-            ],
+            "movie": ["movie", "film"],
             "programming language": [
-                "programming_language",
-                "programming language",
-                "language"
+                "programming_language", "programming language", "language"
             ],
-            "instrument": [
-                "instrument"
-            ],
-            "food": [
-                "food"
-            ],
-            "subject": [
-                "subject"
-            ],
-            "hobby": [
-                "hobby"
-            ]
+            "instrument": ["instrument"],
+            "food": ["food"],
+            "subject": ["subject"],
+            "hobby": ["hobby"]
         }
 
-        possible_keys = aliases.get(
-            category,
-            [category]
-        )
+        possible_keys = aliases.get(category, [category])
 
         for key in possible_keys:
-
             value = preferences.get(key)
 
             if value:
@@ -255,24 +253,16 @@ def check_memory(question, memory):
                     f"{str(value).title()}."
                 )
 
-        # --------------------------------
         # Search user notes
-        # --------------------------------
-
         for note in user_notes:
-
             note_lower = note.lower()
 
             if (
-                    f"favourite {category}" in note_lower
-                    or f"favorite {category}" in note_lower
+                f"favourite {category}" in note_lower
+                or f"favorite {category}" in note_lower
             ):
-
                 if " is " in note:
-                    value = note.split(
-                        " is ",
-                        1
-                    )[1].strip()
+                    value = note.split(" is ", 1)[1].strip()
 
                     return (
                         f"Your favourite {category} is "
@@ -820,6 +810,52 @@ def generate_rag_answer(question, rag_results):
 def detect_tool(question):
     question_lower = question.lower().strip()
 
+    # YouTube search / keyboard selection / explicit playback.
+    # Keep these routes near the top so they are not swallowed by other
+    # generic browser or media-control rules.
+    import re
+    from urllib.parse import unquote
+
+    youtube_search_match = re.match(
+        r"^(?:search|find|look up) (?:on )?youtube(?: for)?\\s+(.+)$",
+        question_lower
+    )
+    if youtube_search_match:
+        query = question.strip()[youtube_search_match.start(1):].strip().rstrip("?.")
+        if query:
+            return ("browser_search_youtube", query)
+
+    if question_lower in {
+        "play this video",
+        "play the selected video",
+        "play selected video",
+        "play this one",
+        "open selected video",
+        "play it",
+        "activate selected video"
+    }:
+        return ("browser_play_selected_youtube_video", None)
+
+    if question_lower in {
+        "select the first video",
+        "select first video",
+        "focus the first video",
+        "focus first video",
+        "select the first one"
+    }:
+        return ("browser_select_youtube_video", 1)
+
+    direction_phrases = {
+        "right": "right", "move right": "right", "go right": "right",
+        "next": "next", "next video": "right", "move to the right": "right",
+        "left": "left", "move left": "left", "go left": "left",
+        "previous": "previous", "previous video": "left", "move to the left": "left",
+        "up": "up", "move up": "up", "go up": "up",
+        "down": "down", "move down": "down", "go down": "down",
+    }
+    if question_lower in direction_phrases:
+        return ("browser_navigate_youtube_selection", direction_phrases[question_lower])
+
     # Browser Navigation / Voice Search
     if question_lower in ["scroll up", "scroll upward", "go up"]:
         return ("browser_scroll_up", None)
@@ -924,24 +960,37 @@ def detect_tool(question):
         if "skip backward" in question_lower or "skip back" in question_lower:
             return ("browser_skip_backward", None)
 
-        # YouTube Video Selection
-        youtube_video_numbers = {
-            "first": 1,
-            "second": 2,
-            "third": 3,
-            "fourth": 4,
-            "fifth": 5
-        }
+        # YouTube selection without a number
+        if question_lower in [
+            "select youtube video",
+            "select the youtube video",
+            "play youtube video",
+            "play the youtube video",
+            "open youtube video",
+            "open the youtube video"
+        ]:
+            return ("youtube_selection_missing_number", None)
 
+        # -------------------------
+        # Select a numbered YouTube result without playing it.
+        youtube_video_numbers = {
+            "one": 1, "on": 1, "won": 1, "1": 1,
+            "two": 2, "to": 2, "too": 2, "2": 2,
+            "three": 3, "tree": 3, "3": 3,
+            "four": 4, "for": 4, "4": 4,
+            "five": 5, "fife": 5, "5": 5,
+            "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+        }
         for word, number in youtube_video_numbers.items():
-            if (
-                    f"play the {word} video" in question_lower
-                    or f"play {word} video" in question_lower
-                    or f"select the {word} video" in question_lower
-                    or f"select {word} video" in question_lower
-                    or f"open the {word} video" in question_lower
-                    or f"open {word} video" in question_lower
-            ):
+            phrases = [
+                f"select youtube video {word}",
+                f"select the youtube video {word}",
+                f"select video {word}",
+                f"select the video {word}",
+                f"select the first video" if number == 1 else "",
+                f"select the {word} video",
+            ]
+            if question_lower in phrases:
                 return ("browser_select_youtube_video", number)
 
         question_lower = question.lower().strip()
@@ -1908,16 +1957,29 @@ def ask_ai(question):
     # Check for Tools
     # -------------------------
 
-    tool, tool_input = detect_tool(
-        search_question
-    )
+    print("DEBUG 1 - Routing question:", repr(search_question))
+
+    tool, tool_input = detect_tool(search_question)
+
+    print("DEBUG 2 - Detected tool:", tool)
+    print("DEBUG 3 - Tool input:", repr(tool_input))
+
+    if tool:
+        print("DEBUG 4 - Executing tool:", tool)
+
+        tool_result = execute_tool(tool, tool_input)
+
+        print("DEBUG 5 - Tool finished:", repr(tool_result))
 
     if tool:
 
-        tool_result = execute_tool(
-            tool,
-            tool_input
-        )
+        if tool:
+            print(f"DEBUG: Detected tool: {tool}, input: {tool_input}")
+
+            tool_result = execute_tool(
+                tool,
+                tool_input
+            )
 
         if tool == "calculator":
             answer = f"The answer is {tool_result}."

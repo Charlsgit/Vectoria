@@ -17,10 +17,12 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 # Load Embedding Model
 # -------------------------
 
+
 print("Loading embedding model...")
 
 embedding_model = SentenceTransformer(
-    MODEL_NAME
+    MODEL_NAME,
+    local_files_only=True
 )
 
 print("Embedding model ready!")

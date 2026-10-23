@@ -1,3 +1,5 @@
+import time
+import pygetwindow as gw
 # -------------------------
 # Calculator Tool
 # -------------------------
@@ -308,6 +310,8 @@ import subprocess
 CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
 def open_website(website):
+    print("========== OPEN_WEBSITE CALLED ==========")
+    print("Website:", website)
 
     websites = {
         "google": "https://www.google.com",
@@ -319,7 +323,7 @@ def open_website(website):
         "linkedin": "https://www.linkedin.com",
         "instagram": "https://www.instagram.com",
         "facebook": "https://www.facebook.com",
-        "whatsapp": "https://web.whatsapp.com"
+        "whatsapp": "https://web.whatsapp.com",
     }
 
     website = website.lower().strip()
@@ -328,17 +332,23 @@ def open_website(website):
         return f"I don't know how to open {website} yet."
 
     try:
+        # Reuse an existing Chrome window if possible.
+        if _activate_chrome_window():
+            import pyautogui
+            import time
 
-        subprocess.Popen([
-            CHROME_PATH,
-            websites[website]
-        ])
+            pyautogui.hotkey("ctrl", "l")
+            time.sleep(0.2)
+            pyautogui.write(websites[website], interval=0.01)
+            pyautogui.press("enter")
+        else:
+            subprocess.Popen([CHROME_PATH, websites[website]])
 
         return f"Opening {website}."
 
-    except Exception:
-
-        return "I couldn't open Google Chrome."
+    except Exception as error:
+        print("Website launcher error:", repr(error))
+        return f"I couldn't open {website}."
 
 # -------------------------
 # Volume Control Tool
@@ -675,42 +685,253 @@ def browser_skip_backward():
     pyautogui.press("j")
     return "Skipped backward 10 seconds."
 
-def browser_select_youtube_video(index):
-    """
-    Selects a YouTube search result by its visible position.
-    Currently supports results 1 through 5.
-    """
+def _activate_chrome_window():
+    """Bring an existing Chrome window to the foreground when possible."""
+    try:
+        chrome_windows = [
+            window for window in gw.getAllWindows()
+            if window.title and "chrome" in window.title.lower()
+        ]
+        if not chrome_windows:
+            return False
+
+        window = next(
+            (item for item in chrome_windows
+             if "youtube" in item.title.lower()),
+            chrome_windows[0]
+        )
+        if window.isMinimized:
+            window.restore()
+        window.activate()
+        time.sleep(0.5)
+        return True
+    except Exception as error:
+        print("Could not activate Chrome:", repr(error))
+        return False
+
+
+# Stores YouTube search results and selection for the current session.
+youtube_search_query = ""
+youtube_search_results = []
+youtube_selected_video = None
+
+youtube_homepage_selection_active = False
+
+
+def browser_search_youtube(query):
+    """Show YouTube search in the existing Chrome tab and collect up to five results."""
+    global youtube_search_query, youtube_search_results, youtube_selected_video
+
+    from urllib.parse import quote_plus
+
+    query = str(query).strip()
+    if not query:
+        return "Tell me what you want to search for on YouTube."
+
+    search_url = "https://www.youtube.com/results?search_query=" + quote_plus(query)
+
+    # Display the search in the user's existing Chrome window/tab.
+    if _activate_chrome_window():
+        pyautogui.hotkey("ctrl", "l")
+        time.sleep(0.2)
+        pyautogui.write(search_url, interval=0.005)
+        pyautogui.press("enter")
+    else:
+        # If Chrome is not open, launch it at the search URL.
+        try:
+            subprocess.Popen([CHROME_PATH, search_url])
+        except Exception as error:
+            print("Could not open YouTube:", repr(error))
+            return "I couldn't open YouTube. Please make sure Chrome is installed."
+
+    # Collect result titles in a separate headless session. Do not reuse the
+    # user's Chrome profile; that can cause profile-lock and session errors.
+    driver = None
+    results = []
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+
+        options = Options()
+        options.binary_location = CHROME_PATH
+        options.add_argument("--headless=new")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1280,900")
+
+        driver = webdriver.Chrome(options=options)
+        driver.get(search_url)
+        wait = WebDriverWait(driver, 20)
+        wait.until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "ytd-video-renderer")
+            )
+        )
+
+        for video in driver.find_elements(By.CSS_SELECTOR, "ytd-video-renderer"):
+            try:
+                link = video.find_element(By.CSS_SELECTOR, "a#video-title")
+                title = link.text.strip()
+                url = link.get_attribute("href")
+                if title and url and "/watch?" in url:
+                    if not any(item["url"] == url for item in results):
+                        results.append({"title": title, "url": url})
+                if len(results) >= 5:
+                    break
+            except Exception:
+                continue
+
+    except Exception as error:
+        print("YouTube result collection error:", repr(error))
+        return (
+            "I opened the YouTube search, but couldn't collect the video list. "
+            "Check that Selenium and ChromeDriver are working."
+        )
+    finally:
+        if driver is not None:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+
+    if not results:
+        return "I opened YouTube, but couldn't find any usable video results."
+
+    youtube_search_query = query
+    youtube_search_results = results
+    youtube_selected_video = None
+
+    print(f"YouTube search results for: {query}")
+    for number, result in enumerate(results, start=1):
+        print(f"{number}. {result['title']}")
+
+    choices = " ".join(
+        f"Video {number}: {result['title']}."
+        for number, result in enumerate(results, start=1)
+    )
+    return (
+        f"I found {len(results)} videos for {query}. "
+        f"{choices} Say select video one through five."
+    )
+
+
+
+def browser_select_youtube_video(index=1):
+    """Focus a YouTube homepage video without playing it."""
+    if not _activate_chrome_window():
+        return "I couldn't find an open Chrome window."
 
     try:
         index = int(index)
     except (TypeError, ValueError):
-        return "Invalid video number."
+        index = 1
 
-    if index < 1 or index > 5:
-        return "I can currently select videos one through five."
+    if index != 1:
+        return "For homepage navigation, say select the first video, then use the arrow commands."
 
-    # Make sure the browser page has focus
-    pyautogui.click()
+    # Escape browser/page overlays, then move keyboard focus onto the page.
+    pyautogui.press("esc")
+    pyautogui.press("tab", presses=8, interval=0.08)
 
-    # Move focus to the first interactive element on the page
-    pyautogui.press("home")
+    return (
+        "Attempted to focus the first homepage video. "
+        "Check that the visible outline is on the intended video. "
+        "Nothing has been played."
+    )
+def browser_select_youtube_video(index=1):
+    """Focus a YouTube homepage video without playing it."""
+    if not _activate_chrome_window():
+        return "I couldn't find an open Chrome window."
 
-    # Tab through the page to reach the video results.
-    # This will be tuned after testing on the actual YouTube layout.
-    tab_count = {
-        1: 8,
-        2: 9,
-        3: 10,
-        4: 11,
-        5: 12
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.common.by import By
+
+        options = Options()
+        options.debugger_address = "127.0.0.1:9222"
+        driver = webdriver.Chrome(options=options)
+
+        videos = driver.find_elements(
+            By.CSS_SELECTOR,
+            "ytd-rich-item-renderer a#thumbnail"
+        )
+
+        videos = [
+            video for video in videos
+            if video.is_displayed()
+            and video.get_attribute("href")
+            and "/watch?" in video.get_attribute("href")
+        ]
+
+        if not videos:
+            return "I couldn't find visible video cards on the YouTube homepage."
+
+        index = int(index)
+        if index < 1 or index > len(videos):
+            return f"Choose a video between 1 and {len(videos)}."
+
+        video = videos[index - 1]
+
+        driver.execute_script("""
+            arguments[0].scrollIntoView({
+                behavior: 'instant',
+                block: 'center'
+            });
+            arguments[0].focus({preventScroll: true});
+            arguments[0].style.outline = '4px solid #00aaff';
+            arguments[0].style.outlineOffset = '3px';
+        """, video)
+
+        title = video.get_attribute("aria-label") or "Selected video"
+        return f"Focused video {index}: {title}. Nothing has been played."
+
+    except Exception as error:
+        print("YouTube selection error:", repr(error))
+        return (
+            "Couldn't focus the video. Make sure Chrome is running "
+            "with remote debugging enabled on port 9222."
+        )
+
+
+
+def browser_navigate_youtube_selection(direction):
+    """Move keyboard focus around the YouTube homepage."""
+    if not _activate_chrome_window():
+        return "I couldn't find an open Chrome window."
+
+    direction = str(direction).lower().strip()
+
+    key_map = {
+        "right": "right",
+        "left": "left",
+        "up": "up",
+        "down": "down",
+        "next": "right",
+        "previous": "left",
     }
 
-    for _ in range(tab_count[index]):
-        pyautogui.press("tab")
+    key = key_map.get(direction)
+    if not key:
+        return "Say up, down, left, right, next, or previous."
+
+    pyautogui.press(key)
+    return f"Pressed {direction}. Check the visible focus outline."
+
+
+def browser_play_selected_youtube_video():
+    """Activate the currently keyboard-focused YouTube item."""
+    if not _activate_chrome_window():
+        return "I couldn't find an open Chrome window."
 
     pyautogui.press("enter")
+    return "Pressed Enter on the currently focused item."
 
-    return f"Selected YouTube video {index}."
+
 
 # -------------------------
 # Window Control Tool
@@ -811,6 +1032,10 @@ TOOLS = {
     "browser_backspace": {"function": browser_backspace, "description": "Deletes the previous character from the active browser field.", "requires_input": False},
     "browser_delete_word": {"function": browser_delete_word, "description": "Deletes the previous word from the active browser field.", "requires_input": False},
     "browser_clear_search": {"function": browser_clear_search, "description": "Clears the active browser address/search field.", "requires_input": False},
+    "browser_search_youtube": {"function": browser_search_youtube,"description": "Searches YouTube for a user-provided topic and stores the top five results.","requires_input": True},
+    "browser_select_youtube_video": {"function": browser_select_youtube_video,"description": "Focuses the first YouTube homepage video without playing it.","requires_input": True},
+    "browser_navigate_youtube_selection": {"function": browser_navigate_youtube_selection,"description": "Moves keyboard focus around the YouTube homepage without playing a video.","requires_input": True},
+    "browser_play_selected_youtube_video": {"function": browser_play_selected_youtube_video,"description": "Activates the currently focused YouTube item using Enter.","requires_input": False},
     "browser_search": {"function": browser_search, "description": "Submits the current browser search/address entry.", "requires_input": False},
     "calculator": {
         "function": calculate,
@@ -996,12 +1221,6 @@ TOOLS = {
         "description": "Skips the active YouTube video backward by 10 seconds.",
         "requires_input": False
     },
-
-    "browser_select_youtube_video": {
-        "function": browser_select_youtube_video,
-        "description": "Selects a YouTube search result by its position from one to five.",
-        "requires_input": True
-    }
 }
 
 # -------------------------
@@ -1016,4 +1235,3 @@ if __name__ == "__main__":
     print("Calculator:", TOOLS["calculator"]["function"]("25 * 48"))
     print("Time:", TOOLS["time"]["function"]())
     print("Weather:", TOOLS["weather"]["function"]("Hyderabad"))
-
