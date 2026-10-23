@@ -397,24 +397,14 @@ def initialize_rag():
 
     documents = load_documents()
 
-    chunks = create_chunks(
-        documents
-    )
+    chunks = create_chunks(documents)
 
-    print("\n--- RAG CHUNKS ---")
+    index, embeddings = build_index(chunks)
 
-    for i, chunk in enumerate(chunks):
-        print(f"\nCHUNK {i}")
-        print("SOURCE:", chunk["source"])
-        print("TEXT:")
-        print(chunk["text"])
-        print("--------------------")
-
-    index, embeddings = build_index(
-        chunks
-    )
+    print("RAG initialized successfully.")
 
     return index, chunks
+
 
 # -------------------------
 # Test RAG

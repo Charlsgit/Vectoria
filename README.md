@@ -1,288 +1,341 @@
 # Vectoria 🤖
 
-> A local AI voice assistant designed to combine voice interaction, RAG-based knowledge retrieval, memory, wake-word detection, and tool-based interaction.
+> A local-first AI voice assistant for natural voice interaction, knowledge retrieval, conversational memory, wake-word activation, and tool-based automation.
 
 ## Overview
 
-Vectoria is a locally running AI voice assistant that allows users to interact with an AI system through natural voice conversations.
+**Vectoria** is a Python-based AI voice assistant designed to run locally on Windows. It combines speech recognition, a local large language model, Retrieval-Augmented Generation (RAG), conversational memory, text-to-speech, custom wake-word detection, and utility tools in a single application.
 
-The project combines speech recognition, local language-model generation, retrieval-augmented generation (RAG), conversational memory, text-to-speech, wake-word detection, and utility tools into a single assistant.
+The goal is to create a personal AI assistant that can understand spoken commands, retrieve relevant information from a local knowledge base, generate responses using a local LLM, and interact with the user's system through supported tools.
 
-The system is designed to run locally on a Windows machine rather than depending entirely on cloud-based AI services.
+Vectoria uses local models and resources for its core AI pipeline, reducing reliance on cloud-based AI services.
 
 ## Features
 
-- 🎙️ **Voice Interaction**  
-  Capture user speech and process spoken commands and questions.
-
-- 🧠 **Local AI Processing**  
-  Uses locally available AI models for language generation.
-
-- 📚 **RAG (Retrieval-Augmented Generation)**  
-  Retrieves relevant information from a local knowledge base before generating responses.
-
-- 💾 **Conversational Memory**  
-  Maintains relevant conversation information using a local memory system.
-
-- 🔊 **Text-to-Speech**  
-  Converts generated responses into spoken output.
-
-- 🗣️ **Wake-Word Detection**  
-  Supports activation through the custom wake word **"Hey Vectoria"**.
-
-- 🛠️ **Tool Interaction**  
-  Provides functionality through dedicated tools rather than relying only on conversational responses.
-
-- 📖 **Knowledge Base**  
-  Supports local knowledge files that can be embedded and searched for relevant information.
+- 🎙️ **Voice Interaction** — Captures microphone input and processes spoken questions and commands.
+- 📴 **Offline Speech Recognition** — Uses Faster-Whisper locally for speech-to-text after the model has been downloaded.
+- 🔑 **Custom Wake Word** — Supports activation through the phrase **"Hey Vectoria"** using a custom OpenWakeWord model.
+- 🧠 **Local LLM** — Uses Ollama with the `llama3.2:1b` model for local response generation.
+- 📚 **Retrieval-Augmented Generation (RAG)** — Retrieves relevant context from local knowledge files before generating knowledge-based answers.
+- 🔎 **Semantic Search** — Uses Sentence Transformers embeddings and FAISS similarity search.
+- 💾 **Conversational Memory** — Stores and retrieves user information through a local memory system.
+- 🔊 **Text-to-Speech** — Uses `pyttsx3` with the Microsoft Zira voice where available.
+- 🟣 **Animated Orb Interface** — Uses PySide6 to provide a visual interface for assistant states.
+- 🔇 **Noise Reduction** — Applies audio noise reduction during speech processing.
+- 🛠️ **Tool Integration** — Supports utility actions through dedicated tools in the project.
 
 ## Architecture
 
-The core Vectoria pipeline can be represented as:
+The main voice-assistant workflow follows this general pipeline:
 
-```
-                    ┌──────────────────┐
-                    │   User Speech    │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │Speech Recognition│
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │ Intent / Query   │
-                    │    Processing    │
-                    └────────┬─────────┘
-                             │
-                 ┌───────────┴───────────┐
-                 │                       │
-                 ▼                       ▼
-        ┌─────────────────┐     ┌─────────────────┐
-        │   RAG Search    │     │  Tool Selection │
-        │ Local Knowledge │     │                 │
-        └────────┬────────┘     └────────┬────────┘
-                 │                       │
-                 └───────────┬───────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │   Local LLM      │
-                    │    Generation    │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │ Memory / Context │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │   Text-to-Speech │
-                    └────────┬─────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │   Spoken Reply   │
-                    └──────────────────┘
+```text
+                   User Speech
+                        |
+                        v
+               Microphone Capture
+                        |
+                        v
+                Wake-Word Listener
+                        |
+                        v
+              Offline Speech-to-Text
+                 Faster-Whisper
+                        |
+                        v
+                Command Processing
+                        |
+              +---------+---------+
+              |                   |
+              v                   v
+         RAG Retrieval       Tool Handling
+              |                   |
+              v                   |
+        FAISS Search              |
+              |                   |
+              v                   |
+       Relevant Context            |
+              +---------+---------+
+                        |
+                        v
+                Local LLM (Ollama)
+                        |
+                        v
+                 Response Handling
+                        |
+               +--------+--------+
+               |                 |
+               v                 v
+           Local Memory     Text-to-Speech
+                                 |
+                                 v
+                           Spoken Response
 ```
 
-# RAG Pipeline
+The exact execution path depends on the user's command. Not every request requires RAG retrieval or tool execution.
 
-Vectoria uses a local retrieval pipeline for knowledge-based questions.
+## RAG Pipeline
 
+Vectoria uses Retrieval-Augmented Generation to answer questions using information stored in local knowledge files.
+
+```text
+Local Knowledge Files
+        |
+        v
+   Text Chunking
+        |
+        v
+Sentence Transformer
+    Embeddings
+        |
+        v
+   FAISS Index
+        |
+        v
+ Similarity Search
+        |
+        v
+ Relevant Context
+        |
+        v
+  Local LLM (Ollama)
+        |
+        v
+  Generated Answer
 ```
-Knowledge Files
-      │
-      ▼
-Text Chunking
-      │
-      ▼
-Sentence Transformer Embeddings
-      │
-      ▼
-FAISS Vector Index
-      │
-      ▼
-Similarity Search
-      │
-      ▼
-Relevant Context
-      │
-      ▼
-Local LLM
-      │
-      ▼
-Generated Response
 
+### RAG Components
+
+| Component | Technology |
+|---|---|
+| Embedding model | `all-MiniLM-L6-v2` |
+| Vector index | FAISS |
+| Knowledge sources | Local `.txt` files |
+| Language model | Ollama `llama3.2:1b` |
+| Retrieval approach | Embedding-based similarity search |
+
+### Current Knowledge Base
+
+The current knowledge directory includes:
+
+- `knowledge/python.txt`
+- `knowledge/statistics.txt`
+
+The knowledge base can be expanded by adding additional supported text files.
+
+## Offline Speech Recognition
+
+Vectoria uses **Faster-Whisper** for local speech-to-text processing.
+
+The current implementation uses:
+
+- Model: `base`
+- Device: CPU
+- Compute type: INT8
+- Language: English
+
+The model must be downloaded before it can be used offline for the first time. Once the required model files and dependencies are available locally, speech transcription does not require an internet connection.
+
+## Wake-Word System
+
+Vectoria includes a custom wake-word detection pipeline for:
+
+**"Hey Vectoria"**
+
+The project includes components for collecting positive and negative audio samples, testing microphone input, and training or evaluating the custom wake-word model.
+
+The runtime model is expected at:
+
+```text
+wakeword/training/output/oww_training/hey_vectoria.onnx
 ```
-The current knowledge base includes topics such as:
 
--  **Python**
+Training scripts, datasets, and generated artifacts may be maintained locally rather than committed to the public repository.
 
--  **Statistics**
+## Memory
 
-The knowledge files can be expanded with additional information as the project develops.
+Vectoria includes a local memory system for retaining relevant user information across interactions.
 
-# Memory
+Memory operations are handled through the project's memory module. Runtime memory data is intended to remain local and should not be committed if it contains personal or sensitive information.
 
-Vectoria includes a local conversational memory system.
+## Animated Orb Interface
 
-Memory is stored locally and can be used to maintain relevant context across interactions.
+The visual interface is implemented using **PySide6**.
 
-Runtime memory files are intentionally excluded from the public GitHub repository through ```.gitignore.```
+The orb reflects assistant states such as:
 
-# Wake-Word System
+- Idle
+- Listening
+- Thinking
+- Speaking
 
-Vectoria includes a custom wake-word pipeline for:
+The interface runs alongside the voice-processing loop.
 
-```Hey Vectoria```
+## Technologies
 
-The wake-word system contains components for:
+- **Python**
+- **Faster-Whisper** — Offline speech recognition
+- **Ollama** — Local LLM execution
+- **Llama 3.2 1B** — Local language model
+- **Sentence Transformers** — Text embeddings
+- **FAISS** — Vector similarity search
+- **OpenWakeWord** — Wake-word detection
+- **SpeechRecognition** — Microphone capture
+- **NumPy** — Audio and numerical processing
+- **noisereduce** — Audio noise reduction
+- **PySide6** — Desktop orb interface
+- **pyttsx3** — Text-to-speech
+- **PyAudio** — Microphone input support
 
-- **Recording positive samples**
-- **Recording negative samples**
-- **Wake-word testing**
-- **Microphone testing**
-- **Streaming detection**
-- **Resampling**
-- **Pipeline testing**
+## Project Structure
 
-Training datasets and generated model artifacts are excluded from the GitHub repository.
+The following is a high-level overview of important project files. The exact repository contents may change as development continues.
 
-# Project Structure
-
-```
+```text
 Vectoria/
 │
-├── agent.py
-├── ai.py
-├── app.py
-├── conversation.py
 ├── main.py
-├── memory.py
-├── notifications.py
+├── ai.py
 ├── rag.py
-├── realtime.py
-├── tools.py
+├── memory.py
 ├── wake_word.py
+├── tools.py
+├── notifications.py
+├── vectoria_orb.py
+├── Launch Vectoria.bat
+├── test_offline_stt.py
 │
 ├── knowledge/
 │   ├── python.txt
 │   └── statistics.txt
 │
 ├── wakeword/
-│   ├── record_negative.py
-│   ├── record_positive.py
-│   ├── record_wakeword.py
-│   ├── test_exact_pipeline.py
-│   ├── test_microphone.py
-│   ├── test_streaming.py
-│   ├── test_wakeword.py
-│   ├── test_wakeword_resampled.py
-│   └── test_wakeword_wav.py
+│   └── training/
+│       └── output/
+│           └── oww_training/
+│               └── hey_vectoria.onnx
 │
-├── test_live_mic.py
-├── test_model.py
-├── test_model_features.py
-├── test_positive.py
-├── test_positive_stream.py
-├── test_stt_mic.py
-│
-├── .gitignore
-├── Track.md
-└── Overview of the project sctucture.md
+├── README.md
+└── .gitignore
 ```
 
-# Technologies
+Some model artifacts, training data, local profiles, and runtime files may be excluded from GitHub.
 
-The project currently uses technologies and components including:
+## Installation and Setup
 
-- **Python**
-- **PyTorch**
-- **Ollama**
-- **Local LLM models**
-- **Sentence Transformers**
-- **FAISS**
-- **Speech Recognition**
-- **Text-to-Speech**
-- **OpenWakeWord**
-- **NumPy**
-- **PyAudio / microphone input**
-- **Streamlit**
+### Prerequisites
 
-# Local-First Design
+- Windows
+- Python compatible with the project's installed dependencies
+- Git
+- Ollama
+- The required Python packages
+- A working microphone
 
-Vectoria is designed around a local-first approach.
+### 1. Clone the repository
 
-The goal is to keep the core assistant functionality running on the user's own machine, including:
-
-- **AI model execution**
-- **Knowledge retrieval**
-- **Memory**
-- **Voice processing**
-- **Wake-word detection**
-- **Tool execution**
-
-This approach provides greater control over the local environment and allows the assistant to operate without making every interaction dependent on a cloud service.
-
-# Running the Project
-
-Clone the repository:
-
-```
+```powershell
 git clone https://github.com/Charlsgit/Vectoria.git
 cd Vectoria
 ```
 
-Create a virtual environment:
-```
+### 2. Create a virtual environment
+
+```powershell
 python -m venv .venv
 ```
 
-Activate it on Windows:
-```
-.venv\Scripts\activate
+### 3. Activate the environment
+
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
-Install the required dependencies:
-```
-pip install -r requirements.txt
-```
-```
-Note: A requirements.txt file will be added as the project dependency setup is finalized.
+If PowerShell prevents activation, you can use the virtual environment's Python executable directly without activating it.
+
+### 4. Install dependencies
+
+Install the Python packages required by the project into the virtual environment.
+
+For example, the core packages include:
+
+```powershell
+python -m pip install faster-whisper SpeechRecognition pyttsx3 PySide6 sentence-transformers faiss-cpu ollama numpy noisereduce
 ```
 
-# Project Status
+Additional dependencies may be required by the wake-word listener, microphone backend, and other tools. Install the versions compatible with the project before running the application.
+
+> **Note:** If a `requirements.txt` file is added to the repository, prefer installing the pinned dependencies from that file.
+
+### 5. Set up Ollama
+
+Install Ollama and download the model used by Vectoria:
+
+```powershell
+ollama pull llama3.2:1b
+```
+
+Ensure Ollama is running before launching the assistant.
+
+### 6. Launch Vectoria
+
+From the project root, run:
+
+```powershell
+.\.venv\Scripts\python.exe main.py
+```
+
+Alternatively, activate `.venv` and run:
+
+```powershell
+python main.py
+```
+
+Wait for the embedding model, RAG pipeline, AI model, and offline Whisper model to initialize. Then say **"Hey Vectoria"** to activate the assistant.
+
+## Running Offline
+
+Vectoria is designed for local-first operation. To use the core assistant without internet access:
+
+1. Download all required AI models and dependencies while online.
+2. Confirm that the embedding model and Faster-Whisper model are cached locally.
+3. Download the required Ollama model.
+4. Ensure the wake-word model and local knowledge files are present.
+5. Run Vectoria with Wi-Fi disabled and test the complete workflow.
+
+Offline operation depends on the availability of every required runtime component. Features that rely on external websites, online APIs, or network services will not work without a suitable connection.
+
+## Project Status
 
 Vectoria is an actively developed project.
 
-Current development areas include:
+Current implementation areas include:
 
-- **Voice interaction**
-- **Local LLM integration**
-- **RAG-based knowledge retrieval**
-- **Conversational memory**
-- **Wake-word detection**
-- **Tool interaction**
-- **Assistant automation**
-- **Natural-language command processing**
+- Local voice interaction
+- Offline speech recognition
+- Custom wake-word detection
+- Local LLM integration
+- RAG-based knowledge retrieval
+- Conversational memory
+- Text-to-speech
+- Animated desktop interface
+- Tool-based interaction
 
-Some components are still being refined and tested as the project evolves.
+Individual components may continue to be refined and tested as the project develops.
 
-# Future Improvements
+## Future Improvements
 
-Planned improvements include:
+Potential improvements include:
 
-- **More natural-language tool commands**
-- **Improved wake-word accuracy**
-- **Better conversational context handling**
-- **Additional knowledge sources**
-- **More assistant tools**
-- **Improved response generation**
-- **Better integration between voice, memory, RAG, and tools**
-- **Further optimization for local execution**
+- Improved wake-word accuracy
+- More robust noise handling
+- Better conversational context management
+- Expanded local knowledge sources
+- Additional tools and system automation
+- Improved response generation
+- Further optimization for low-resource computers
+- A mobile interface and laptop integration
+
+These are development goals and should not be interpreted as completed features.
 
 ## Author
 
@@ -290,4 +343,8 @@ Planned improvements include:
 
 B.Tech Computer Science (Data Science)
 
-⭐ If you find the project interesting, feel free to explore the repository and follow its development.
+GitHub: [@Charlsgit](https://github.com/Charlsgit)
+
+---
+
+⭐ If you find Vectoria interesting, explore the repository and follow its development.
